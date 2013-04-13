@@ -62,5 +62,7 @@ Alpha.  Lacking tests.  Searches for back-references aren't optimized, no autolo
 ## Immediate Next Steps
 * Tests
 * Automatically load related objects when retrieved
+* Nested Relationships
+* Make attached relational functions hybrid getter/setters
 
 
