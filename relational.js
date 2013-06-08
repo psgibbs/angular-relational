@@ -17,6 +17,7 @@ module.factory('RelationalResource', ['ResourceBase', 'relational.config',
     }
 
     function _retrieveChildren(name, primaryId, referenceId){
+        //create an array for a backref
 
         return function(){
             var children = [];
@@ -31,14 +32,18 @@ module.factory('RelationalResource', ['ResourceBase', 'relational.config',
     }
 
     function _register(name, id, obj){
-        console.log("Registering " + name +"<"+obj[id]+">");
+        //place an object in the library
+
+        // console.log("Registering " + name +"<"+obj[id]+">");
         if(typeof(obj[id]) !== 'undefined'){
             _library[name][obj[id]] = obj;
         }
     }
 
     function _deregister(name, id, obj){
-        console.log("De-Registering " + name +"<"+obj[id]+">");
+        //remove an object from the library
+
+        // console.log("De-Registering " + name +"<"+obj[id]+">");
         delete _library[name][obj[id]];
     }
 
@@ -49,26 +54,80 @@ module.factory('RelationalResource', ['ResourceBase', 'relational.config',
         var myConfig = config[name];
 
         function RelationalResource(data){
-            angular.copy(data || {}, this);
+
+            RelationalResource.copy(data || {}, this);
+
+            if (this.initialize){
+                //in case the user defines a custom constructor
+                this.initialize();
+            }
+
             this.register();
         }
 
+        // RelationalResource.bootstrap = function(item){
+        //     console.log("Bootstrap?");
+        //     if(angular.isArray(item)){
+        //         var rtn = [];
+        //         angular.forEach(item, function(i){
+        //             rtn.push(new RelationalResource(i));
+        //         });
+        //         return rtn;
+        //     }else{
+        //         return new RelationalResource(item);
+        //     }
+        // };
+
+
         RelationalResource.deregister = function(obj){
             _deregister(name, myConfig.id, obj);
+        };
+        RelationalResource.prototype.deregister = function(){
+            _deregister(name, myConfig.id, this);
         };
 
         RelationalResource.prototype.register = function(){
             _register(name, myConfig.id, this);
         };
 
+        RelationalResource.copy = function(data, target){
+            angular.forEach(RelationalResource.relations, function(relation){
+                if(typeof(data[relation]) !== 'undefined') {
+                    var Constructor = relationalConstructors(relation);
+                    var object = new Constructor(data[relation]);
+                    delete data[relation];
+                }
+            });
+
+            angular.forEach(RelationalResource.backrefs, function(backref, sourceName){
+                if(angular.isArray(data[backref])) {
+                    var Constructor = relationalConstructors(sourceName);
+
+                    angular.forEach(data[backref], function(item){
+                        var object = new Constructor(item);
+                    });
+
+                    delete data[backref];
+                }
+            });
+
+            return angular.copy(data, target);
+        };
+
+        RelationalResource.relations = [];
+        RelationalResource.backrefs = {};
 
         for(var referenceId in myConfig.relationships){
+
+            //for each target reference add a function that returns the objectt based  on the id
             var rel = myConfig.relationships[referenceId];
             RelationalResource.prototype[rel] = _retrieve(rel, referenceId);
+            RelationalResource.relations.push(rel);
 
             if(typeof(myConfig.backref) !== 'undefined'){
                 var referenceObject = relationalConstructors(rel);
                 referenceObject.prototype[myConfig.backref] = _retrieveChildren(name, config[rel].id, referenceId);
+                referenceObject.backrefs[name] = myConfig.backref;
             }
         }
 
