@@ -36,7 +36,11 @@ module.factory('RelationalResource', ['ResourceBase', 'relational.config',
 
         // console.log("Registering " + name +"<"+obj[id]+">");
         if(typeof(obj[id]) !== 'undefined'){
-            _library[name][obj[id]] = obj;
+            if(typeof(_library[name][obj[id]]) !== 'undefined'){
+                angular.extend(_library[name][obj[id]], obj);
+            }else{
+                _library[name][obj[id]] = obj;
+            }
         }
     }
 
